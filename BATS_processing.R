@@ -2,7 +2,7 @@
 # Aug 21 2025 
 
 # contains data plotting and statistics for respiration, sinking, images
-# input: ST1_BATS_pellets_review.xlsx
+# input: ST1_BATS_pellets.xlsx
 
 ##### libraries
 library(tidyr)
@@ -22,7 +22,7 @@ library(patchwork)
 setwd("your/location")
 
 # read the data sheet
-Pellets <- read_excel("ST1_BATS_pellets_review.xlsx", sheet = "all_pellets"
+Pellets <- read_excel("ST1_BATS_pellets.xlsx", sheet = "all_pellets"
                       , na = c("NA", "na", "", " "))
 Pellets <- Pellets[-1, ]  # Remove the second row containing units
 

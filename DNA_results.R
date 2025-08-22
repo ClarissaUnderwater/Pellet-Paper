@@ -19,7 +19,7 @@ library(pheatmap)
 # ASVs_counts_18S.tsv (18S count data).
 # combined_18S_taxonomy.tsv (processed 18S taxonomy data, generated in the script).
 # ASVs_taxonomy_18S.tsv, ASVs_taxonomy_18S_PR2.tsv, and ASVs_taxonomy_18S_MZG.tsv (used for taxonomy combination).
-# ST1_BATS_pellets_review.xlsx
+# ST1_BATS_pellets.xlsx
 
 ############################################
 #### combining 18S taxonomies (done)
@@ -67,7 +67,7 @@ rm(ASV_taxonomy_18S, ASV_taxonomy_18S_MZG, ASV_taxonomy_18S_PR2)
 #####################################################################
 # loading data
 #####################################################################
-Pellets <- read_excel("ST1_BATS_pellets_review.xlsx", sheet = "all_pellets"
+Pellets <- read_excel("ST1_BATS_pellets.xlsx", sheet = "all_pellets"
                       , na = c("NA", "na", "", " "))
 Pellets <- Pellets[-1, ]  # Remove the second row containing units
 
