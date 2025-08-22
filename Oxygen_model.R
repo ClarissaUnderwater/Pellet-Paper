@@ -48,7 +48,7 @@ steady_state_concentration <- function(D_O2, R, phi, dr, n, C_ext) {
   A[n, n] <- 1
   b[n] <- C_ext
   
-  # Solve the system of equations
+  # Solve a linear system of equations
   C_new <- solve(A, b)
   return(C_new)
 }
