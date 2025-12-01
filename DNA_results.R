@@ -9,6 +9,10 @@ library(forcats)
 library(tidyr)
 library(colorspace)
 library(pheatmap)
+library(Hmisc)
+library(reshape2)
+library(tibble)
+
 
 ######
 #setwd("your/directory")
@@ -399,12 +403,6 @@ plot_richness(ASV_physeq_18S, shape="Station", color="Taxon", measures=c("Chao1"
  # merging this table with the plotting table we just made
  filt_major_taxa_proportions_18S_for_plot.g2 <- merge(filt_major_taxa_proportions_18S_for_plot.g, sample_info_for_merge)
  head(filt_major_taxa_proportions_18S_for_plot.g2)
- 
- 
- 
-
- 
- 
 
  
  #####################################################################
@@ -512,4 +510,411 @@ plot_richness(ASV_physeq_18S, shape="Station", color="Taxon", measures=c("Chao1"
           display_numbers = TRUE,
           fontsize = 10,
           main = "Heatmap of p-values")
+ 
+ #####################################################################
+## statistical tests for beta diversity
+ ##################################################################### 
+ #####################################################################
+ # 16S
+ #############################################################################################################################
+ ############ do they group by station?
+ #16S dendrogram
+ deseq_counts_16S <- DESeqDataSetFromMatrix(count_16S, colData = sample_info_tab, design = ~Station) 
+ deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
+ vst_trans_count_tab <- assay(deseq_counts_vst)
+ euc_dist <- dist(t(vst_trans_count_tab))
+ euc_clust <- hclust(euc_dist, method="ward.D2")
+ euc_dend <- as.dendrogram(euc_clust, hang=0.1)
+ dend_cols <- as.character(sample_info_tab$color[order.dendrogram(euc_dend)])
+ labels_colors(euc_dend) <- dend_cols
+ labels(euc_dend) <- as.character(sample_info_tab$info_ID[order.dendrogram(euc_dend)])
+ plot(euc_dend, ylab="VST Euc. dist.")
+ 
+ rel_abund_16S <- apply(count_16S, 2, function(x) x / sum(x))
+ bray_dist_16S <- vegdist(t(rel_abund_16S), method = "bray") # Compute Bray–Curtis dissimilarity
+ bray_no_salp <- vegdist(t(rel_abund_16S[, df_no_salp$DNA_name]), method = "bray")
+ 
+ adonis2(bray_dist_16S ~ Station, data = sample_info_tab) #Test for compositional differences (PERMANOVA) by station 
+ betadisper_16S <- betadisper(bray_dist_16S, sample_info_tab$Station) # Test for dispersion differences (PERMDISP) by station
+ anova(betadisper_16S)
+ 
+ # no salp 
+ betadisper_no_salp <- betadisper(bray_no_salp, df_no_salp$Station)
+ anova(betadisper_no_salp)
+ adonis2(bray_no_salp ~ Station, data = df_no_salp) #Test for compositional differences (PERMANOVA) by station 
+ 
+ 
+ ############ do they group by taxon?
+ #16S dendrogram
+ deseq_counts <- DESeqDataSetFromMatrix(count_16S, colData = sample_info_tab, design = ~Taxon) 
+ deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
+ vst_trans_count_tab <- assay(deseq_counts_vst)
+ euc_dist <- dist(t(vst_trans_count_tab))
+ euc_clust <- hclust(euc_dist, method="ward.D2")
+ euc_dend <- as.dendrogram(euc_clust, hang=0.1)
+ dend_cols <- as.character(sample_info_tab$color[order.dendrogram(euc_dend)])
+ labels_colors(euc_dend) <- dend_cols
+ labels(euc_dend) <- as.character(sample_info_tab$info_ID[order.dendrogram(euc_dend)])
+ plot(euc_dend, ylab="VST Euc. dist.")
+ 
+ rel_abund_16S <- apply(count_16S, 2, function(x) x / sum(x))
+ bray_dist_16S <- vegdist(t(rel_abund_16S), method = "bray") # Compute Bray–Curtis dissimilarity
+ bray_no_salp <- vegdist(t(rel_abund_16S[, df_no_salp$DNA_name]), method = "bray")
+ 
+ adonis2(bray_dist_16S ~ Taxon, data = sample_info_tab) #Test for compositional differences (PERMANOVA) by station 
+ betadisper_16S <- betadisper(bray_dist_16S, sample_info_tab$Taxon) # Test for dispersion differences (PERMDISP) by station
+ anova(betadisper_16S)
+ 
+ # no salp 
+ bray_no_salp <- vegdist(t(rel_abund_16S[, df_no_salp$DNA_name]), method = "bray")
+ betadisper_no_salp <- betadisper(bray_no_salp, df_no_salp$Taxon)
+ anova(betadisper_no_salp)
+ adonis2(bray_no_salp ~ Taxon, data = df_no_salp) #Test for compositional differences (PERMANOVA) by station 
+ 
+ ############ do they group by organism?
+ #16S dendrogram
+ deseq_counts_16S <- DESeqDataSetFromMatrix(count_16S, colData = sample_info_tab, design = ~Organism) 
+ deseq_counts_vst <- varianceStabilizingTransformation(deseq_counts)
+ vst_trans_count_tab <- assay(deseq_counts_vst)
+ euc_dist <- dist(t(vst_trans_count_tab))
+ euc_clust <- hclust(euc_dist, method="ward.D2")
+ euc_dend <- as.dendrogram(euc_clust, hang=0.1)
+ dend_cols <- as.character(sample_info_tab$color[order.dendrogram(euc_dend)])
+ labels_colors(euc_dend) <- dend_cols
+ labels(euc_dend) <- as.character(sample_info_tab$info_ID[order.dendrogram(euc_dend)])
+ plot(euc_dend, ylab="VST Euc. dist.")
+ 
+ rel_abund_16S <- apply(count_16S, 2, function(x) x / sum(x))
+ bray_dist_16S <- vegdist(t(rel_abund_16S), method = "bray") # Compute Bray–Curtis dissimilarity
+ bray_no_salp <- vegdist(t(rel_abund_16S[, df_no_salp$DNA_name]), method = "bray")
+ 
+ # include only organisms with at least 2 pellets and no salp
+ table(df_no_salp$Organism)
+ organisms_with_reps <- names(which(table(df_no_salp$Organism) >= 2))
+ df_replicated <- subset(df_no_salp, Organism %in% organisms_with_reps)
+ shared_ids <- intersect(colnames(rel_abund_16S), df_replicated$DNA_name)
+ rel_abund_16S_repl <- rel_abund_16S[, shared_ids]
+ df_replicated <- df_replicated[df_replicated$DNA_name %in% shared_ids, ]
+ bray_repl <- vegdist(t(rel_abund_16S_repl), method = "bray")
+ 
+ adonis2(bray_repl ~ Organism, data = df_replicated)
+ betadisper_repl <- betadisper(bray_repl, df_replicated$Organism)
+ anova(betadisper_repl)
+ 
+ ############ do they group by organism only euphausiid?
+ # include only organisms with at least 2 pellets
+ table(df_no_salp$Organism)
+ df_replicated <- subset(df_no_salp, tx %in% "EP")
+ shared_ids <- intersect(colnames(rel_abund_16S), df_replicated$DNA_name)
+ rel_abund_16S_repl <- rel_abund_16S[, shared_ids]
+ df_replicated <- df_replicated[df_replicated$DNA_name %in% shared_ids, ]
+ bray_repl <- vegdist(t(rel_abund_16S_repl), method = "bray")
+ 
+ adonis2(bray_repl ~ Organism, data = df_replicated)
+ betadisper_repl <- betadisper(bray_repl, df_replicated$Organism)
+ anova(betadisper_repl)
+ 
+ 
+ ### do they group by station or taxon or organism?
+ rel_abund_16S <- apply(count_16S, 2, function(x) x / sum(x))
+ bray_dist_16S <- vegdist(t(rel_abund_16S), method = "bray") # Compute Bray–Curtis dissimilarity
+ 
+ adonis2(bray_dist_16S ~ Taxon, data = sample_info_tab) #Test for compositional differences (PERMANOVA) by station 
+ betadisper_16S <- betadisper(bray_dist_16S, sample_info_tab$Taxon) # Test for dispersion differences (PERMDISP) by station
+ 
+ #adonis2(bray_dist_16S ~ Station, data = sample_info_tab) #Test for compositional differences (PERMANOVA) by station 
+ #betadisper_16S <- betadisper(bray_dist_16S, sample_info_tab$Station) # Test for dispersion differences (PERMDISP) by station
+ anova(betadisper_16S)
+ 
+ # is it driven by the the salp?
+ df_no_salp <- subset(sample_info_tab, tx != "SP") 
+ bray_no_salp <- vegdist(t(rel_abund_16S[, df_no_salp$DNA_name]), method = "bray")
+ betadisper_no_salp <- betadisper(bray_no_salp, df_no_salp$Taxon)
+ anova(betadisper_no_salp)
+ 
+ # is it driven by the the small salp?
+ df_no_single <- subset(sample_info_tab, Taxon != "Salp") 
+ bray_no_salp <- vegdist(t(rel_abund_16S[, df_no_single$DNA_name]), method = "bray")
+ betadisper_no_salp <- betadisper(bray_no_salp, df_no_single$Taxon)
+ anova(betadisper_no_salp)
+ 
+ ## which  microbes are different by taxa?
+ count_16S_no_salp <- count_16S[, df_no_salp$DNA_name]
+ dds <- DESeqDataSetFromMatrix(countData = count_16S_no_salp,
+                               colData = df_no_salp,
+                               design = ~ Taxon)
+ dds <- DESeq(dds)
+ res <- results(dds)
+ res_sig <- res[which(res$padj < 0.05), ]
+ 
+ tax_df <- as.data.frame(tax_16S) |> rownames_to_column("ASV")
+ groups <- levels(colData(dds)$Taxon)
+ pairs  <- t(combn(groups, 2))             # rows are [B, A]
+ 
+ one_contrast <- function(B, A){
+   results(dds, contrast = c("Taxon", B, A)) |>
+     as.data.frame() |>
+     rownames_to_column("ASV") |>
+     mutate(contrast  = paste(B, "vs", A),
+            direction = case_when(
+              log2FoldChange >  0 ~ paste("Higher in", B),
+              log2FoldChange <  0 ~ paste("Higher in", A),
+              TRUE                ~ "No change"
+            ))
+ }
+ 
+ res_all <- do.call(rbind, apply(pairs, 1, \(x) one_contrast(B = x[1], A = x[2])))
+ 
+ res_sig <- res_all |>
+   left_join(tax_df, by = "ASV") |>
+   filter(!is.na(padj), padj < 0.05) |>
+   arrange(contrast, padj, desc(abs(log2FoldChange)))
+ 
+ # save
+ #write.table(res_sig, "DESeq2_16S_byTaxon_sig_ASVs.tsv", sep="\t", quote=FALSE, row.names=FALSE)
+ 
+ 
+ # df_no_salp$Taxon or $Organism identifies the animal
+ dominant_taxa <- rel_abund_16S_no_salp %>%
+   as.data.frame() %>%
+   rownames_to_column("ASV") %>%
+   pivot_longer(-ASV, names_to = "Sample", values_to = "RelAbund") %>%
+   left_join(df_no_salp[, c("DNA_name","Taxon")],
+             by = c("Sample"="DNA_name")) %>%
+   group_by(Taxon, ASV) %>%
+   summarise(mean_abundance = mean(RelAbund), .groups="drop") %>%
+   arrange(Taxon, desc(mean_abundance)) %>%
+   group_by(Taxon) %>%
+   slice_max(mean_abundance, n = 10)   # top 10 per animal type
+ 
+ # Subset the raw counts to no-salp samples
+ count_16S_no_salp <- count_16S[, df_no_salp$DNA_name]
+ count_18S_no_salp <- count_18S[, df_no_salp$DNA_name]
+ 
+ # Compute relative abundances (each column sums to 1)
+ rel_abund_16S_no_salp <- apply(count_16S_no_salp, 2, function(x) x / sum(x))
+ rel_abund_18S_no_salp <- apply(count_18S_no_salp, 2, function(x) x / sum(x))
+ 
+ # Check the result
+ dim(rel_abund_16S_no_salp)
+ colSums(rel_abund_16S_no_salp)[1:5]   # should all be 1
+ 
+ tax_df <- as.data.frame(tax_16S) |> rownames_to_column("ASV")
+ dominant_taxa <- left_join(dominant_taxa, tax_df, by = "ASV")
+ 
+ library(indicspecies)
+ comm <- t(rel_abund_16S)
+ indval <- multipatt(comm, sample_info_tab$Taxon, func="r.g", duleg=TRUE, control=how(nperm=999))
+ summary(indval)
+ 
+ 
+ comm <- t(rel_abund_18S)
+ indval <- multipatt(comm, sample_info_tab$Taxon, func="r.g", duleg=TRUE, control=how(nperm=999))
+ summary(indval)
+ #############################################################################################################################
+ # test for links between 16S and 18S
+ #############################################################################################################################
+ 
+ # raw or relative abundance matrices
+ # rows = ASVs, columns = samples (now including salps)
+ shared_samples <- intersect(colnames(rel_abund_16S), colnames(rel_abund_18S))
+ 
+ m16 <- rel_abund_16S[, shared_samples]
+ m18 <- rel_abund_18S[, shared_samples]
+ 
+ # optional: filter rare ASVs to reduce noise
+ keep16 <- rowSums(m16 > 0) >= 3     # present in ≥3 samples
+ keep18 <- rowSums(m18 > 0) >= 3
+ m16 <- m16[keep16, ]
+ m18 <- m18[keep18, ]
+ 
+ 
+ # 1) Align samples and drop zero-variance features
+ shared <- intersect(colnames(rel_abund_16S), colnames(rel_abund_18S))
+ m16 <- rel_abund_16S[, shared, drop=FALSE]
+ m18 <- rel_abund_18S[, shared, drop=FALSE]
+ 
+ # keep features present in >= 3 samples and with variance > 0
+ keep16 <- rowSums(m16 > 0) >= 3 & apply(m16, 1, var) > 0
+ keep18 <- rowSums(m18 > 0) >= 3 & apply(m18, 1, var) > 0
+ m16 <- m16[keep16, , drop=FALSE]
+ m18 <- m18[keep18, , drop=FALSE]
+ 
+ # 2) Build a single matrix with FEATURES as COLUMNS (required by rcorr)
+ m_all <- rbind(m16, m18)     # features = rows, samples = cols
+ X     <- t(m_all)            # now: samples = rows, features = cols
+ 
+ n16 <- nrow(m16)             # number of 16S features
+ n18 <- nrow(m18)             # number of 18S features
+ 
+ # 3) Correlate across features (columns)
+ cor_matrix <- rcorr(as.matrix(X), type = "spearman")
+ R <- cor_matrix$r
+ P <- cor_matrix$P
+ 
+ # 4) Extract ONLY 16S–18S block (first n16 are 16S, next n18 are 18S)
+ # (because we stacked m16 above m18 in rbind)
+ idx16 <- 1:n16
+ idx18 <- (n16 + 1):(n16 + n18)
+ 
+ R_16S_18S <- R[idx16, idx18, drop=FALSE]
+ P_16S_18S <- P[idx16, idx18, drop=FALSE]
+ 
+ # 5) Turn into a tidy table and filter strong links
+ cor_df <- melt(R_16S_18S, varnames = c("ASV_16S", "ASV_18S"), value.name = "rho") %>%
+   mutate(ASV_16S = rownames(m16)[ASV_16S],
+          ASV_18S = rownames(m18)[ASV_18S])
+ 
+ p_df <- melt(P_16S_18S, varnames = c("ASV_16S", "ASV_18S"), value.name = "p")
+ 
+ links <- left_join(cor_df, p_df, by = c("ASV_16S","ASV_18S")) %>%
+   filter(!is.na(rho), !is.na(p),
+          abs(rho) >= 0.6, p < 0.05) %>%
+   arrange(desc(abs(rho)))
+ 
+ # 6) (Optional) annotate taxonomy
+ tax16_df <- as.data.frame(tax_16S) %>% tibble::rownames_to_column("ASV_16S")
+ tax18_df <- as.data.frame(tax_18S) %>% tibble::rownames_to_column("ASV_18S")
+ links_annot <- links %>%
+   left_join(tax16_df, by="ASV_16S") %>%
+   left_join(tax18_df, by="ASV_18S", suffix=c("_16S","_18S"))
+ 
+ 
+ # add FDR to your links table
+ links_annot$padj <- p.adjust(links_annot$p, method = "BH")
+ 
+ # keep only robust links (edit thresholds as you like)
+ links_filt <- subset(links_annot, !is.na(rho) & !is.na(padj) &
+                        abs(rho) >= 0.6 & padj < 0.05)
+ 
+ summary_phylum_class <- links_filt |>
+   dplyr::group_by(phylum_16S, class_18S) |>
+   dplyr::summarise(
+     n_links       = dplyr::n(),
+     mean_rho      = mean(rho, na.rm = TRUE),
+     strongest_rho = max(abs(rho), na.rm = TRUE),
+     direction     = ifelse(mean(rho, na.rm = TRUE) > 0, "positive", "negative"),
+     .groups = "drop"
+   ) |>
+   dplyr::arrange(dplyr::desc(n_links), dplyr::desc(abs(mean_rho)))
+ 
+ summary_genus_order <- links_filt |>
+   dplyr::group_by(genus_16S, order_18S) |>
+   dplyr::summarise(
+     n_links       = dplyr::n(),
+     mean_rho      = mean(rho, na.rm = TRUE),
+     strongest_rho = max(abs(rho), na.rm = TRUE),
+     direction     = ifelse(mean(rho, na.rm = TRUE) > 0, "positive", "negative"),
+     .groups = "drop"
+   ) |>
+   dplyr::arrange(dplyr::desc(n_links), dplyr::desc(abs(mean_rho)))
+ 
+ top_pairs <- links_filt |>
+   dplyr::select(ASV_16S, genus_16S, family_16S, phylum_16S,
+                 ASV_18S, genus_18S, family_18S, class_18S, order_18S,
+                 rho, padj) |>
+   dplyr::arrange(dplyr::desc(abs(rho)), padj)
+ 
+ ggplot(summary_phylum_class,
+        aes(x = phylum_16S, y = class_18S, size = n_links, fill = mean_rho)) +
+   geom_point(shape = 21, color = "black", alpha = 0.9) +
+   scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+   theme_bw() +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+   labs(x = "Bacterial phylum (16S)", y = "Eukaryotic class (18S)",
+        size = "# ASV links", fill = "Mean ρ")
+ 
+ write.table(summary_phylum_class, file = "summary_phylum_class.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+ 
+ unique(summary_phylum_class$class_18S)
+ unique(summary_phylum_class$phylum_16S )
+ #############################################################################################################################
+ # 18S
+ ############################################################
+ #18S dendrogram
+ 
+ ############ do they group by station?
+ deseq_counts_18S <- DESeqDataSetFromMatrix(count_18S, colData = sample_info_tab, design = ~Station) 
+ deseq_counts_vst_18S <- varianceStabilizingTransformation(deseq_counts_18S)
+ vst_trans_count_tab_18S <- assay(deseq_counts_vst_18S)
+ euc_dist_18S <- dist(t(vst_trans_count_tab_18S))
+ euc_clust_18S <- hclust(euc_dist_18S, method="ward.D2")
+ euc_dend_18S <- as.dendrogram(euc_clust_18S, hang=0.1)
+ dend_cols_18S <- as.character(sample_info_tab$color[order.dendrogram(euc_dend_18S)])
+ labels_colors(euc_dend_18S) <- dend_cols_18S
+ labels(euc_dend_18S) <- as.character(sample_info_tab$info_ID[order.dendrogram(euc_dend_18S)])
+ 
+ plot(euc_dend_18S, ylab="VST Euc. dist.")
+ rel_abund_18S <- apply(count_18S, 2, function(x) x / sum(x))
+ bray_dist_18S <- vegdist(t(rel_abund_18S), method = "bray") # Compute Bray–Curtis dissimilarity
+ bray_no_salp <- vegdist(t(rel_abund_18S[, df_no_salp$DNA_name]), method = "bray")
+ 
+ adonis2(bray_dist_18S ~ Station, data = sample_info_tab) #Test for compositional differences (PERMANOVA) by station 
+ betadisper_18S <- betadisper(bray_dist_18S, sample_info_tab$Station) # Test for dispersion differences (PERMDISP) by station
+ anova(betadisper_18S)
+ 
+ # no salp 
+ betadisper_no_salp <- betadisper(bray_no_salp, df_no_salp$Station)
+ anova(betadisper_no_salp)
+ adonis2(bray_no_salp ~ Station, data = df_no_salp) #Test for compositional differences (PERMANOVA) by station 
+ 
+ 
+ ############ do they group by taxon?
+ deseq_counts_18S <- DESeqDataSetFromMatrix(count_18S, colData = sample_info_tab, design = ~Taxon) # test either by station or type, rerun accordingly until anova 
+ deseq_counts_vst_18S <- varianceStabilizingTransformation(deseq_counts_18S)
+ vst_trans_count_tab_18S <- assay(deseq_counts_vst_18S)
+ euc_dist_18S <- dist(t(vst_trans_count_tab_18S))
+ euc_clust_18S <- hclust(euc_dist_18S, method="ward.D2")
+ euc_dend_18S <- as.dendrogram(euc_clust_18S, hang=0.1)
+ dend_cols_18S <- as.character(sample_info_tab$color[order.dendrogram(euc_dend_18S)])
+ labels_colors(euc_dend_18S) <- dend_cols_18S
+ labels(euc_dend_18S) <- as.character(sample_info_tab$info_ID[order.dendrogram(euc_dend_18S)])
+ 
+ plot(euc_dend_18S, ylab="VST Euc. dist.")
+ rel_abund_18S <- apply(count_18S, 2, function(x) x / sum(x))
+ bray_dist_18S <- vegdist(t(rel_abund_18S), method = "bray") # Compute Bray–Curtis dissimilarity
+ bray_no_salp <- vegdist(t(rel_abund_18S[, df_no_salp$DNA_name]), method = "bray")
+ 
+ adonis2(bray_dist_18S ~ Taxon, data = sample_info_tab) #Test for compositional differences (PERMANOVA) by station 
+ betadisper_18S <- betadisper(bray_dist_18S, sample_info_tab$Taxon) # Test for dispersion differences (PERMDISP) by station
+ anova(betadisper_18S)
+ 
+ # no salp 
+ bray_no_salp <- vegdist(t(rel_abund_18S[, df_no_salp$DNA_name]), method = "bray")
+ betadisper_no_salp <- betadisper(bray_no_salp, df_no_salp$Taxon)
+ anova(betadisper_no_salp)
+ adonis2(bray_no_salp ~ Taxon, data = df_no_salp) #Test for compositional differences (PERMANOVA) by station 
+ 
+ 
+ ############ do they group by organism?
+ deseq_counts_18S <- DESeqDataSetFromMatrix(count_18S, colData = sample_info_tab, design = ~Organism) # test either by station or type, rerun accordingly until anova 
+ deseq_counts_vst_18S <- varianceStabilizingTransformation(deseq_counts_18S)
+ vst_trans_count_tab_18S <- assay(deseq_counts_vst_18S)
+ euc_dist_18S <- dist(t(vst_trans_count_tab_18S))
+ euc_clust_18S <- hclust(euc_dist_18S, method="ward.D2")
+ euc_dend_18S <- as.dendrogram(euc_clust_18S, hang=0.1)
+ dend_cols_18S <- as.character(sample_info_tab$color[order.dendrogram(euc_dend_18S)])
+ labels_colors(euc_dend_18S) <- dend_cols_18S
+ labels(euc_dend_18S) <- as.character(sample_info_tab$info_ID[order.dendrogram(euc_dend_18S)])
+ 
+ plot(euc_dend_18S, ylab="VST Euc. dist.")
+ rel_abund_18S <- apply(count_18S, 2, function(x) x / sum(x))
+ bray_dist_18S <- vegdist(t(rel_abund_18S), method = "bray") # Compute Bray–Curtis dissimilarity
+ bray_no_salp <- vegdist(t(rel_abund_18S[, df_no_salp$DNA_name]), method = "bray")
+ 
+ # include only organisms with at least 2 pellets and no salp
+ table(df_no_salp$Organism)
+ organisms_with_reps <- names(which(table(df_no_salp$Organism) >= 2))
+ df_replicated <- subset(df_no_salp, Organism %in% organisms_with_reps)
+ shared_ids <- intersect(colnames(rel_abund_18S), df_replicated$DNA_name)
+ rel_abund_18S_repl <- rel_abund_18S[, shared_ids]
+ df_replicated <- df_replicated[df_replicated$DNA_name %in% shared_ids, ]
+ bray_repl <- vegdist(t(rel_abund_18S_repl), method = "bray")
+ 
+ adonis2(bray_repl ~ Organism, data = df_replicated)
+ betadisper_repl <- betadisper(bray_repl, df_replicated$Organism)
+ anova(betadisper_repl)
+ 
+ #
+ 
  
